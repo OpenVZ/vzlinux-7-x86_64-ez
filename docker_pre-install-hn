@@ -1,0 +1,61 @@
+#!/bin/bash
+
+MODPROBE_FILE="/etc/sysconfig/modules/docker.modules"
+MODULE_LIST="veth"
+VZLIST="/usr/sbin/vzlist"
+VZCTL="/usr/sbin/vzctl"
+VERSION=1
+
+VEROOT=$1
+VEID=$2
+
+function error_msg() {
+	echo $*
+	exit 1
+}
+
+function setup_modprobe() {
+	cat << EOF > $MODPROBE_FILE 2>/dev/null
+#!/bin/sh
+
+VERSION=$VERSION
+MODULE_LIST="$MODULE_LIST"
+
+for module in \$MODULE_LIST; do
+    modprobe -b \$module > /dev/null 2>&1
+done
+
+exit 0
+EOF
+
+	[ $? -ne 0 ] && error_msg "Failed to create $MODPROBE_FILE file"
+
+	chmod 0755 $MODPROBE_FILE > /dev/null 2>&1
+	[ $? -ne 0 ] && error_msg "Failed to make $MODPROBE_FILE executable"
+}
+
+# 1. Check for vzkernel supports docker - 7.0, already supported
+
+# 2. Check for Container is ploop - 7.0, only ploops
+
+# 3. Check for needed features
+$VZLIST -H -o features $VEID 2>/dev/null | grep 'bridge:on' > /dev/null 2>&1
+[ $? -ne 0 ] && error_msg "Failed to install docker template: feature bridge should be on"
+
+$VZLIST -H -o netfilter $VEID 2>/dev/null | grep '^full' > /dev/null 2>&1
+[ $? -ne 0 ] && error_msg "Failed to install docker template: netfilter should be full"
+
+# 4. Setup docker-required modules autoload
+if [ -x $MODPROBE_FILE ]; then
+	EXISTING_VERSION=`cat $MODPROBE_FILE | grep ^VERSION | sed "s,VERSION=,,g"`
+	[ -z $EXISTING_VERSION ] && EXISTING_VERSION=0
+	[ $EXISTING_VERSION -lt $VERSION ] && setup_modprobe
+else
+	setup_modprobe
+fi
+
+# 5. Load modules
+$MODPROBE_FILE
+[ $? -ne 0 ] && error_msg "Failed to load required modules"
+
+exit 0

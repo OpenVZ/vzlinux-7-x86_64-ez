@@ -1,0 +1,663 @@
+#!/bin/bash
+
+SCRIPT_NAME=`basename $0`
+
+SCRIPTVERSION=25
+NEEDSPACE=150000
+
+DATADIR="/usr/share/libvznbdmig"
+
+. $DATADIR/ct2vmlib
+
+TMPLOSNAME=vzlinux
+TMPLVERSION=7
+TMPLARCH=x86_64
+
+#getmigscript $SCRIPT_NAME >/dev/null 2>&1
+
+if [ $TMPLARCH = x86 ]; then
+	TMPLENV="rpm44x86"
+else
+	TMPLENV="rpm44x64"
+fi
+
+SYSLOG_SCRIPT="syslog"
+CT2VM_PACKAGES_RM="vzdummy-jre-fc6 vzdummy-kernel-el5 vzdummy-apache vzdev
+vzdummy-glibc vzdummy-kernel-utils-el5"
+CT2VM_PACKAGES_ADD="kernel grub kernel-devel make gcc"
+CT2VM_PACKAGES_ADD_GRUB2="kernel grub2 kernel-devel make gcc"
+CT2VM_PACKAGES_POST_RM=""
+ADD_KERNEL_BOOT_OPTS=""
+VEID=$1
+NBD_PATH=$2
+MSG_LEVEL=$3
+CHECK_PACKAGES=$4
+
+OPTS=`getopt -o b: \
+ --long boot_device: \
+ -n $SCRIPT_NAME -- "$@"`
+
+if [ $? != 0 ] ; then usage; exit 1 ; fi
+
+eval set -- "$OPTS"
+
+while true ; do
+	case "$1" in
+		--boot_device)
+			NBD_GRUB_PDEV=$2
+			shift
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+	INSTDEVICE="/dev/hda1"
+	DEVMAJOR=3
+	DEVMINOR=1
+	BOOT="/boot"
+else
+	BOOT=""
+	GRUB_DEVICE="/dev/hda1"
+	GRUB_DEVMAJOR=3
+	GRUB_DEVMINOR=1
+	INSTDEVICE="/dev/hda2"
+	DEVMAJOR=3
+	DEVMINOR=2
+fi
+FSOPTIONS="defaults"
+INITRD_OPTS="--rootdev=$INSTDEVICE"
+USE_UPSTART=no
+USE_NEW_UPSTART=no
+USE_SYSTEMD=no
+
+case "$TMPLOSNAME" in
+	vzlinux)
+		TMPLTITLE="Virtuozzo Linux $TMPLVERSION"
+		case "$TMPLVERSION" in
+			4)
+	                        CT2VM_PACKAGES_RM="vzdummy-kernel-ce4 vzdev vzdummy-glibc vzdummy-udev-as4"
+        	                INITRD_OPTS=""
+                	        if [ $TMPLARCH = x86 ]; then
+                        	        TMPLENV="rpm43x86"
+                        	else
+                                	TMPLENV="rpm43x64"
+                        	fi
+				;;
+			5)
+				DEVMAJOR=8
+				if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+					INSTDEVICE="/dev/sda1"
+				else
+					GRUB_DEVICE="/dev/sda1"
+					INSTDEVICE="/dev/sda2"
+					GRUB_DEVMAJOR=8
+				fi
+				INITRD_OPTS="--with=ahci"
+				;;
+			6)
+                                SYSLOG_SCRIPT="rsyslog"
+                                DEVMAJOR=8
+                                if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+                                        INSTDEVICE="/dev/sda1"
+                                else
+                                        GRUB_DEVICE="/dev/sda1"
+                                        INSTDEVICE="/dev/sda2"
+                                        GRUB_DEVMAJOR=8
+                                fi
+                                USE_NEW_UPSTART=yes
+                                CT2VM_PACKAGES_RM="vzdev vzdummy-init-fc13"
+                                CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD module-init-tools"
+                                INITRD_OPTS="--rootdev=$INSTDEVICE"
+                                if [ $TMPLARCH = x86 ]; then
+                                        TMPLENV="rpm47x86"
+                                else
+                                        TMPLENV="rpm47x64"
+                                fi
+                                ;;
+			7)
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdummy-systemd-el7"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD_GRUB2 e2fsprogs"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.10.0"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm410x86"
+				else
+					TMPLENV="rpm410x64"
+				fi
+				ADD_KERNEL_BOOT_OPTS="selinux=0 noselinux net.ifnames=0"
+				DEVMAJOR=8
+				if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+					INSTDEVICE="/dev/sda1"
+				else
+					GRUB_DEVICE="/dev/sda1"
+					INSTDEVICE="/dev/sda2"
+					GRUB_DEVMAJOR=8
+				fi
+				;;
+		esac
+		;;
+	redhat)
+		case "$TMPLVERSION" in
+			el7)
+				TMPLTITLE="RedHat Enterprise Linux 7"
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdummy-systemd-el7"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD_GRUB2 e2fsprogs"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.10.0"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm410x86"
+				else
+					TMPLENV="rpm410x64"
+				fi
+				ADD_KERNEL_BOOT_OPTS="selinux=0 noselinux net.ifnames=0"
+				DEVMAJOR=8
+				if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+					INSTDEVICE="/dev/sda1"
+				else
+					GRUB_DEVICE="/dev/sda1"
+					INSTDEVICE="/dev/sda2"
+					GRUB_DEVMAJOR=8
+				fi
+				;;
+			el6)
+				SYSLOG_SCRIPT="rsyslog"
+				DEVMAJOR=8
+				if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+					INSTDEVICE="/dev/sda1"
+				else
+					GRUB_DEVICE="/dev/sda1"
+					INSTDEVICE="/dev/sda2"
+					GRUB_DEVMAJOR=8
+				fi
+				TMPLTITLE="RedHat Enterprise Linux 6"
+				USE_NEW_UPSTART=yes
+				CT2VM_PACKAGES_RM="vzdev vzdummy-init-fc13"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD module-init-tools"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm47x86"
+				else
+					TMPLENV="rpm47x64"
+				fi
+				;;
+			el5)
+				DEVMAJOR=8
+				TMPLTITLE="RedHat Enterprise Linux 5"
+				if [ "x$NBD_GRUB_PDEV" = "x" ]; then
+					INSTDEVICE="/dev/sda1"
+				else
+					GRUB_DEVICE="/dev/sda1"
+					INSTDEVICE="/dev/sda2"
+					GRUB_DEVMAJOR=8
+				fi
+				INITRD_OPTS="--with=ahci"
+				;;
+			*)
+				TMPLTITLE="RedHat Enterprise Linux 4"
+				INITRD_OPTS=""
+				CT2VM_PACKAGES_RM="vzdummy-kernel-as4 vzdev vzdummy-glibc vzdummy-udev-as4"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm43x86"
+				else
+					TMPLENV="rpm43x64"
+				fi
+				;;
+		esac
+		;;
+	asianux)
+		TMPLTITLE="Asianux 3"
+		;;
+	oracle)
+		TMPLTITLE="Oracle Enterprise Linux 5"
+		;;
+	fedora-core|fedora)
+		TMPLTITLE="Fedora $TMPLVERSION"
+		case "$TMPLVERSION" in
+			9)
+				CT2VM_PACKAGES_RM="vzdummy-kernel-fc9 vzdev vzdummy-glibc vzdummy-jre-fc9"
+				INITRD_OPTS="--rootdev=$INSTDEVICE --with=sd_mod --with-avail=ata_piix"
+				;;
+			11|12)
+				USE_UPSTART=yes
+				CT2VM_PACKAGES_RM="vzdev vzdummy-jre-fc9"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD mkinitrd"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm47x86"
+				else
+					TMPLENV="rpm47x64"
+				fi
+				;;
+			13)
+				USE_NEW_UPSTART=yes
+				CT2VM_PACKAGES_RM="vzdev vzdummy-jre-fc12"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD dracut"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				ADD_KERNEL_BOOT_OPTS="selinux=0"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm48x86"
+				else
+					TMPLENV="rpm48x64"
+				fi
+				;;
+			14)
+				USE_NEW_UPSTART=yes
+				CT2VM_PACKAGES_RM="vzdev vzdummy-jre-fc12"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD e2fsprogs"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm48x86"
+				else
+					TMPLENV="rpm48x64"
+				fi
+				;;
+			15)
+				if [ -f $NBD_PATH/lib/systemd/system/openvz.target ]; then
+					USE_SYSTEMD=yes
+				else
+					USE_NEW_UPSTART=yes
+				fi
+				CT2VM_PACKAGES_RM="vzdev vzdummy-init-fc15 vzdummy-systemd-fc15 vzdummy-kernel"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD e2fsprogs vzdummy-kernel-remove"
+				CT2VM_PACKAGES_POST_RM="vzdummy-kernel-remove"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="2.6.38.6"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm49x86"
+				else
+					TMPLENV="rpm49x64"
+				fi
+				;;
+			16)
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdev vzdummy-systemd-fc16 vzdummy-kernel"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD e2fsprogs vzdummy-kernel-remove"
+				CT2VM_PACKAGES_POST_RM="vzdummy-kernel-remove"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.1.0"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm49x86"
+				else
+					TMPLENV="rpm49x64"
+				fi
+				;;
+			17)
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdummy-systemd-f17"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD e2fsprogs"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.3.4"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm49db5x86"
+				else
+					TMPLENV="rpm49db5x64"
+				fi
+				;;
+			18)
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdummy-systemd-f18"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD e2fsprogs dkms"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.7.2"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm410x86"
+				else
+					TMPLENV="rpm410x64"
+				fi
+				;;
+			19)
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdummy-systemd-f19"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD_GRUB2 e2fsprogs dkms"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.9.8"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm410x86"
+				else
+					TMPLENV="rpm410x64"
+				fi
+				ADD_KERNEL_BOOT_OPTS="selinux=0 noselinux net.ifnames=0"
+				;;
+			20)
+				USE_SYSTEMD=yes
+				CT2VM_PACKAGES_RM="vzdummy-systemd-f20"
+				CT2VM_PACKAGES_ADD="$CT2VM_PACKAGES_ADD_GRUB2 e2fsprogs dkms"
+				INITRD_OPTS="--rootdev=$INSTDEVICE"
+				export VIRT_OSRELEASE="3.11.9"
+				if [ $TMPLARCH = x86 ]; then
+					TMPLENV="rpm410x86"
+				else
+					TMPLENV="rpm410x64"
+				fi
+				ADD_KERNEL_BOOT_OPTS="selinux=0 noselinux net.ifnames=0"
+				;;
+		esac
+		;;
+	*)
+		TMPLTITLE="RedHat-based Enterprise Linux 5"
+		;;
+esac
+
+RUN_FROM_CHROOT="$DATADIR/run_from_chroot /vz/pkgenv/$TMPLENV"
+RUN_FROM_CHROOT2="$DATADIR/run_from_chroot"
+
+. /etc/vz/conf/$VEID.conf
+. /etc/vz/vz.conf
+
+function usage() {
+	echo "Usage: $0 CTID NBD_PATH MSG_LEVEL [ CHECK_PACKAGES ] [ --grub_device=NBD_GRUB_PDEV ]"
+}
+
+function cleanup(){
+	return 0
+}
+
+function clean_environment() {
+	# Clean environment for fc11 and 12
+	if [ $USE_UPSTART = "yes" ] || [ $USE_NEW_UPSTART = "yes" ]; then
+		rm -f $NBD_PATH/var/lib/rpm/__db* >/dev/null 2>&1
+	fi
+}
+
+if [ "x$VEID" = "x" ]; then
+	usage
+	error_msg "You should give CTID" $ERR_TMPL
+fi
+
+if [ "x$CHECK_PACKAGES" = "xcheck_packages" ]; then
+	$VZPKG install $VEID -q -n -p $CT2VM_PACKAGES_ADD >/dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		error_msg "Can't download packages: $VZPKG install $VEID -q -n -p $CT2VM_PACKAGES_ADD failed" $ERR_TMPL
+	else
+		exit 0
+	fi
+fi
+
+if [ ! -d $NBD_PATH ] || [ "x$NBD_PATH" = "x" ] || [ "x$NBD_PATH" = "/" ]; then
+	usage
+	error_msg "You should give right NBD_PATH ($NBD_PATH)" $ERR_TMPL
+fi
+
+if [ "x$INSTDEVICE" = "x" ]; then
+	usage
+	error_msg "You should give device" $ERR_TMPL
+fi
+
+clean_environment
+
+# Remove and install packages
+remove_packages
+
+# Create devices
+/bin/mknod $NBD_PATH/dev/null c 1 3 >/dev/null 2>&1
+/bin/chmod 666 $NBD_PATH/dev/null >/dev/null 2>&1
+
+clean_environment
+
+install_packages_rpm
+
+install_rhel_tools_script
+
+clean_environment
+
+
+if [ "x$CT2VM_PACKAGES_POST_RM" != "x" ]; then
+	msg $MSG_INFO "Removing additionally installed packages..."
+	for i in $CT2VM_PACKAGES_POST_RM; do
+		$RUN_FROM_CHROOT /usr/lib/rpm/rpmi -e --noscripts  --nodeps \
+		--root $NBD_PATH $i >/dev/null 2>&1
+	done
+	clean_environment
+fi
+
+msg $MSG_INFO "Changing config files..."
+
+if [ $USE_UPSTART = "yes" ]; then
+
+	# Recreate tty scripts
+	for i in tty1 tty2 tty3 tty4 tty5 tty6; do
+	echo "# $i - getty
+#
+# This service maintains a getty on $i from the point the system is
+# started until it is shut down again.
+
+start on stopped rc2
+start on stopped rc3
+start on stopped rc4
+
+stop on runlevel 0
+stop on runlevel 1
+stop on runlevel 6
+
+respawn
+exec /sbin/mingetty $i
+" > $NBD_PATH/etc/event.d/$i
+	done
+fi
+
+if [ $USE_NEW_UPSTART = "yes" ]; then
+	rm -f $NBD_PATH/etc/init/tty2.conf > /dev/null 2>&1
+	rm -f $NBD_PATH/etc/init/console.conf > /dev/null 2>&1
+	mv -f $NBD_PATH/etc/init.removed/*.conf $NBD_PATH/etc/init
+	rm -rf $NBD_PATH/etc/init.removed
+fi
+
+if [ $USE_SYSTEMD = "yes" ]; then
+	rm -f $NBD_PATH/etc/systemd/system/default.target > /dev/null 2>&1
+	ln -s /lib/systemd/system/runlevel3.target \
+		$NBD_PATH/etc/systemd/system/default.target > /dev/null 2>&1
+
+	# Fix gettys
+	if [ -h "$NBD_PATH/etc/systemd/system/getty.target.wants/getty@tty2.service" \
+		-a ! -f "$NBD_PATH/etc/systemd/system/getty.target.wants/getty@tty1.service" ]; then
+		cp -d "$NBD_PATH/etc/systemd/system/getty.target.wants/getty@tty2.service" \
+			"$NBD_PATH/etc/systemd/system/getty.target.wants/getty@tty1.service" > /dev/null 2>&1
+	fi
+fi
+
+# Remove modules.dep script
+if [ -x $NBD_PATH/etc/init.d/modules_dep ]; then
+	$RUN_FROM_CHROOT2 $NBD_PATH /sbin/chkconfig --del modules_dep >/dev/null 2>&1
+	rm -f $NBD_PATH/etc/init.d/modules_dep > /dev/null 2>&1
+fi
+
+# Fix syslog
+if [ -f $NBD_PATH/etc/init.d/$SYSLOG_SCRIPT ]; then
+	mv -f $NBD_PATH/etc/init.d/$SYSLOG_SCRIPT "$NBD_PATH/etc/init.d/$SYSLOG_SCRIPT"_vz
+	cat "$NBD_PATH/etc/init.d/$SYSLOG_SCRIPT"_vz | \
+	sed "s,passed klogd skipped #,,g" | \
+	sed "s,#status klogd,status klogd,g" > \
+	$NBD_PATH/etc/init.d/$SYSLOG_SCRIPT && \
+	chmod 0755 $NBD_PATH/etc/init.d/$SYSLOG_SCRIPT; \
+	rm -f "$NBD_PATH/etc/init.d/$SYSLOG_SCRIPT"_vz || \
+	mv -f "$NBD_PATH/etc/init.d/$SYSLOG_SCRIPT"_vz $NBD_PATH/etc/init.d/$SYSLOG_SCRIPT
+fi
+
+# Fix fstab
+fix_fstab
+
+if [ $USE_UPSTART = "no" ] && [ $USE_NEW_UPSTART = "no" ] && [ $USE_SYSTEMD = "no" ]; then
+# Add back mingettys to /etc/inittab
+	add_mingettys
+fi
+
+# Remove vzreboot
+rm -f $NBD_PATH/etc/rc.d/rc6.d/S00vzreboot >/dev/null 2>&1
+
+# Tune grub.conf
+echo "
+splashimage=(hd0,0)$BOOT/grub/splash.xpm.gz
+timeout=5
+default=1
+" > $NBD_PATH/boot/grub/grub.conf
+
+if [ ! -f $NBD_PATH/boot/grub/menu.lst ]; then
+	ln -s ./grub.conf $NBD_PATH/boot/grub/menu.lst
+fi
+
+msg $MSG_INFO "Configuring network..."
+
+mv $NBD_PATH/etc/sysconfig/network \
+$NBD_PATH/etc/sysconfig/network_vzdev > /dev/null 2>&1
+cat $NBD_PATH/etc/sysconfig/network_vzdev 2>/dev/null | \
+	sed "s,^GATEWAYDEV.*,GATEWAYDEV=\"eth0\",g" | \
+	sed "s,^IPV6_DEFAULTDEV.*,IPV6_DEFAULTDEV=\"eth0\",g" \
+> $NBD_PATH/etc/sysconfig/network
+rm -f $NBD_PATH/etc/sysconfig/network_vzdev >/dev/null 2>&1
+rm -f $NBD_PATH/etc/sysconfig/network-scripts/*venet* >/dev/null 2>&1
+rm -f $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-eth* >/dev/null 2>&1
+
+if [ "x$IP_ADDRESS" = "x0.0.0.0" ]; then
+	IP_ADDRESS=""
+fi
+
+# Preserve netif settings
+NETIF_IPV4_LIST=`echo $NETIF | grep ip= | \
+sed -e "s,.*ip=,,g" -e "s,\,.*,,g" -e "s,:, ,g" 2>/dev/null`
+
+NETIF_IPV6_LIST=`echo $NETIF | grep ip6= | \
+sed -e "s,.*ip6=,,g" -e "s,\,, ,g" -e "s,\"$,,g" 2>/dev/null`
+
+NETIF_IPV4_DHCP=1
+echo $NETIF | grep dhcp=yes >/dev/null 2>&1
+NETIF_IPV4_DHCP=$?
+
+NETIF_IPV6_DHCP=1
+echo $NETIF | grep dhcp6=yes >/dev/null 2>&1
+NETIF_IPV6_DHCP=$?
+
+if [ "x$NETIF_IPV4_LIST" != "x" ] || [ "x$NETIF_IPV6_LIST" != "x" ]; then
+	IP_ADDRESS="$IP_ADDRESS $NETIF_IPV4_LIST $NETIF_IPV6_LIST"
+fi
+
+if [ "x$IP_ADDRESS" != "x" ] || [ $NETIF_IPV4_DHCP -eq 0 ]; then
+	ipv4addr=""
+	ipv6addr=""
+	NETDEVICE="eth0"
+	if [ $NETIF_IPV4_DHCP -eq 0 ]; then
+		echo "DEVICE=$NETDEVICE
+ONBOOT=yes
+BOOTPROTO=dhcp
+" > $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-$NETDEVICE
+		if [ $NETIF_IPV6_DHCP -eq 0 ]; then
+			echo "DHCPV6C=yes
+" >> $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-$NETDEVICE
+		fi
+	else
+		echo "DEVICE=$NETDEVICE
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=127.0.0.1
+NETMASK=255.255.255.255
+BROADCAST=0.0.0.0
+" > $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-$NETDEVICE
+	fi
+
+	ipv6init=0
+	# Setup IPV6 first
+	for i in $IP_ADDRESS; do
+		ipv6addr=`echo $i | grep ":"`
+		if [ "x$ipv6addr" != "x" ]; then
+			if `echo $ipv6addr | grep -v "/" >/dev/null`; then
+				ipv6addr="$ipv6addr/64"
+			fi
+			if [ $ipv6init -eq 0 ]; then
+				echo "IPV6INIT=\"yes\"
+" >> $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-$NETDEVICE
+				ipv6init=1
+			fi
+			IPV6_SECONDARIES="$IPV6_SECONDARIES $ipv6addr"
+		fi
+	done
+
+	if [ "x$IPV6_SECONDARIES" != "x" ]; then
+		echo "IPV6ADDR_SECONDARIES=\"$IPV6_SECONDARIES\"
+" >> $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-$NETDEVICE
+	fi
+
+	# Then setup IPV4
+	NETDEVICE_COUNT=1
+	for i in $IP_ADDRESS; do
+		ipv4addr=`echo $i | grep "\." | sed "s,\/.*,,g"`
+		ipv4mask=`echo $i | grep / | sed "s,.*\/,,g"`
+		if [ "x$ipv4mask" = "x" ]; then
+			ipv4mask="255.255.255.0"
+		fi
+		if [ "x$ipv4addr" != "x" ]; then
+			if [ $NETDEVICE_COUNT -gt 0 ]; then
+				NETDEVICE="eth0:$((NETDEVICE_COUNT-1))"
+			fi
+			echo "
+DEVICE=$NETDEVICE
+ONBOOT=yes
+IPADDR=\"$ipv4addr\"
+NETMASK=\"$ipv4mask\"
+" > $NBD_PATH/etc/sysconfig/network-scripts/ifcfg-$NETDEVICE
+			NETDEVICE_COUNT=$((NETDEVICE_COUNT+1))
+		fi
+	done
+fi
+
+set_nameserver
+
+msg $MSG_INFO "Configuring kernel..."
+AVAILABLE_KERNELS=`find $NBD_PATH/boot -name vmlinuz*`
+
+[ "x$AVAILABLE_KERNELS" = "x" ] && error_msg "No any kernel available" \
+$ERR_TMPL
+
+# Make root device
+for i in $INSTDEVICE /dev/root; do
+	/bin/mknod $NBD_PATH/$i b $DEVMAJOR $DEVMINOR >/dev/null 2>&1
+	/bin/chmod 660 $NBD_PATH/$i >/dev/null 2>&1
+done
+
+# Make grub device
+if [ "x$GRUB_DEVICE" != "x" ]; then
+	/bin/mknod $NBD_PATH/$GRUB_DEVICE b $GRUB_DEVMAJOR $GRUB_DEVMINOR \
+	>/dev/null 2>&1
+	/bin/chmod 660 $NBD_PATH/$GRUB_DEVICE >/dev/null 2>&1
+fi
+
+# Get kernel version and write it to grub
+for i in $AVAILABLE_KERNELS; do
+	KERN_VERSION=`echo $i | sed "s,.*vmlinuz-,,g"`;
+	export VIRT_OSRELEASE=$KERN_VERSION
+
+	# Update depmod
+	$RUN_FROM_CHROOT2 $NBD_PATH /sbin/depmod $KERN_VERSION >/dev/null 2>&1
+
+	# Create proper initrd
+	rm -f $NBD_PATH/boot/initrd-$KERN_VERSION.img
+
+	if [ -x $NBD_PATH/sbin/mkinitrd ]; then
+		MKINITRD="/sbin/mkinitrd"
+	else
+		MKINITRD="/usr/bin/mkinitrd"
+	fi
+
+	$RUN_FROM_CHROOT2 $NBD_PATH $MKINITRD $INITRD_OPTS \
+	/boot/initrd-$KERN_VERSION.img $KERN_VERSION >/dev/null 2>&1
+
+	[ ! -f $NBD_PATH/boot/initrd-$KERN_VERSION.img ] && \
+	error_msg "Failed to create initrd image" $ERR_TMPL
+
+	echo "
+title $TMPLTITLE ($KERN_VERSION)
+	root (hd0,0)
+	kernel $BOOT/vmlinuz-$KERN_VERSION ro $ADD_KERNEL_BOOT_OPTS root=$INSTDEVICE
+	initrd $BOOT/initrd-$KERN_VERSION.img
+" >> $NBD_PATH/boot/grub/grub.conf
+
+done
+
+exit 0

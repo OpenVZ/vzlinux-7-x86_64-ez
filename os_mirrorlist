@@ -1,0 +1,5 @@
+$SW_SERVER/download/mirrors/centos-7
+$SW_SERVER/download/mirrors/updates-released-ce7
+http://repo.virtuozzo.com/vzlinux/mirrorlist/mirrors-7-os
+http://repo.virtuozzo.com/vzlinux/mirrorlist/mirrors-7-updates
+

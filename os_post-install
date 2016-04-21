@@ -1,0 +1,107 @@
+#!/bin/bash
+
+function move_file() {
+	[ $# -eq 2 ] || exit 1
+	local src=$1 dst=$2
+
+	chown --reference=$dst $src || exit 1 
+	chmod --reference=$dst $src || exit 1 
+	mv -f $src $dst
+}
+
+pushd / >/dev/null
+
+[ ! -e etc/mtab ] && ln -s /proc/mounts etc/mtab > /dev/null 2>&1
+
+# Convert system to shadow password files
+/usr/sbin/pwconv > /dev/null 2>&1
+
+# Fix /lib/sysctl.d/00-system.conf
+CFG_FILE=lib/sysctl.d/00-system.conf
+if [ -f $CFG_FILE ]; then
+    sed -e "s,^net.bridge\.,# net.bridge.,g" \
+        -e "s,^kernel\.,# kernel.,g" \
+        $CFG_FILE > ${CFG_FILE}.$$ && \
+		move_file ${CFG_FILE}.$$ $CFG_FILE > /dev/null 2>&1
+fi
+
+# Fix /lib/sysctl.d/50-default.conf
+CFG_FILE=lib/sysctl.d/50-default.conf
+if [ -f $CFG_FILE ]; then
+    sed -e "s,^net.ipv4\.,# net.ipv4.,g" \
+        -e "s,^kernel\.,# kernel.,g" \
+        $CFG_FILE > ${CFG_FILE}.$$ && \
+        move_file ${CFG_FILE}.$$ $CFG_FILE > /dev/null 2>&1
+fi
+
+# Set default target as multi-user target
+rm -f etc/systemd/system/default.target > /dev/null 2>&1
+ln -s multi-user.target etc/systemd/system/default.target > /dev/null 2>&1
+
+# turn services on
+list="network httpd iptables sshd xinetd saslauthd sendmail crond"
+for i in $list; do
+	/bin/systemctl enable $i.service > /dev/null 2>&1
+done
+
+# turn services off
+list="rpcbind avahi-daemon"
+for i in $list; do
+	/bin/systemctl disable $i.service > /dev/null 2>&1
+done
+
+# Enable rpcbind socket
+/bin/systemctl enable rpcbind.socket > /dev/null 2>&1
+
+# disable all cron jobs
+for i in hourly daily weekly monthly; do
+	chmod a-x /etc/cron.${i}/* > /dev/null 2>&1
+done
+# enable logrotate
+chmod a+x /etc/cron.daily/logrotate > /dev/null 2>&1
+
+# Fix sshd_config
+CFG_FILE=etc/ssh/sshd_config
+if [ -f $CFG_FILE ]; then
+    sed -e "s/^X11Forwarding yes/X11Forwarding no/" \
+        $CFG_FILE > ${CFG_FILE}.$$ && \
+		move_file ${CFG_FILE}.$$ $CFG_FILE > /dev/null 2>&1
+fi
+
+# apache tuning
+echo "# prefork MPM
+# StartServers: number of server processes to start
+# MinSpareServers: minimum number of server processes which are kept spare
+# MaxSpareServers: maximum number of server processes which are kept spare
+# ServerLimit: maximum value for MaxClients for the lifetime of the server
+# MaxClients: maximum number of server processes allowed to start
+# MaxRequestsPerChild: maximum number of requests a server process serves
+<IfModule prefork.c>
+StartServers       1
+MinSpareServers    1
+MaxSpareServers    5
+ServerLimit       10
+MaxClients        10
+MaxRequestsPerChild  4000
+</IfModule>
+" > etc/httpd/conf.d/mpm_prefork.conf
+
+# saslauthd tuning
+CFG_FILE=etc/sysconfig/saslauthd
+if [ -f $CFG_FILE ]; then
+    sed -e "s/^FLAGS=/FLAGS=\"-n 2\"/" \
+        $CFG_FILE > ${CFG_FILE}.$$ && \
+		move_file ${CFG_FILE}.$$ $CFG_FILE > /dev/null 2>&1
+fi
+
+rm -rf run/* > /dev/null 2>&1
+
+touch etc/sysconfig/network
+
+mkdir var/log/journal
+chown root:systemd-journal var/log/journal
+chmod g+s var/log/journal
+
+touch etc/fstab
+
+popd > /dev/null

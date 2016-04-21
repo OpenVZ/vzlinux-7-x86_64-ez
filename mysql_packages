@@ -1,0 +1,4 @@
+mariadb-server
+mariadb-devel
+mariadb-bench
+perl-DBD-MySQL

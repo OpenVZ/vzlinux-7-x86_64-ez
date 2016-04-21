@@ -1,0 +1,16 @@
+#!/bin/bash
+
+pushd / >/dev/null
+
+sed -e "s,^OPTIONS=.*,OPTIONS=\"-s vfs\",g" -i etc/sysconfig/docker > /dev/null 2>&1
+
+# Autostart
+systemctl enable docker.service > /dev/null 2>&1
+
+# Reload systemd
+systemctl daemon-reexec > /dev/null 2>&1
+
+# Start it
+systemctl start docker.service > /dev/null 2>&1
+
+popd > /dev/null
