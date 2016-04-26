@@ -52,7 +52,7 @@ Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
 Version: 7.0.0
-Release: 1%{?dist}
+Release: 2%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
 Requires: %package_manager_pkg
@@ -147,5 +147,8 @@ done
 %files -f files.lst
 
 %changelog
+* Tue Apr 26 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-2
+- Drop aux mirrors - all necessary packages are in vzlinux repos now
+
 * Thu Apr 21 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-1
 - Initial release
