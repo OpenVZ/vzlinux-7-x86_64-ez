@@ -99,6 +99,7 @@ rm -rf run/* > /dev/null 2>&1
 touch etc/sysconfig/network
 
 mkdir var/log/journal
+mkdir run/lock
 chown root:systemd-journal var/log/journal
 chmod g+s var/log/journal
 
