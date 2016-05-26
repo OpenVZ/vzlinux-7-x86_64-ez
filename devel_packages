@@ -11,7 +11,7 @@ tex-preview
 libtool
 automake
 cpp
-kpathsea
+texlive-kpathsea-lib
 passivetex
 texinfo
 dejagnu

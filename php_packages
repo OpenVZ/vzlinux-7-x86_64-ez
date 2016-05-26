@@ -9,7 +9,6 @@ php-xmlrpc
 php-cli
 php-common
 php-pdo
-php-pecl-zip
 php-mysql
 php-pgsql
 php-process

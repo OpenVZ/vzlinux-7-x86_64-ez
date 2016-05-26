@@ -52,7 +52,7 @@ Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
 Version: 7.0.0
-Release: 3%{?dist}
+Release: 4%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
 Requires: %package_manager_pkg
@@ -147,6 +147,11 @@ done
 %files -f files.lst
 
 %changelog
+* Thu May 26 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-4
+- Use docker package from VzLinux (see #PSBM-47364)
+- Fix kpathsea requirement for devel template 
+- Fix php template requirements - VzLinux does't have php-pecl-zip in main repos
+
 * Thu May 19 2016 Alexander Stefanov-Khryukin <akhryukin@virtuozzo.com> 7.0.0-3
 - Explicitly create run/lock for mailman, see #PSBM-47198
 
