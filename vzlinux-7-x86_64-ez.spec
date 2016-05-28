@@ -52,7 +52,7 @@ Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
 Version: 7.0.0
-Release: 4%{?dist}
+Release: 6%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
 Requires: %package_manager_pkg
@@ -147,7 +147,10 @@ done
 %files -f files.lst
 
 %changelog
-* Thu May 26 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-4
+* Sat May 28 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-6
+- More devel template adjustments (see #PSBM-47659)
+
+* Thu May 26 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-5
 - Use docker package from VzLinux (see #PSBM-47364)
 - Fix kpathsea requirement for devel template 
 - Fix php template requirements - VzLinux does't have php-pecl-zip in main repos
