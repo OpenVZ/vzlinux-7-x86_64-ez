@@ -99,7 +99,7 @@ done
 
 %changelog
 * Fri Jun 03 2016 Alexander Stefanov <astefanov@virtuozzo.com>
-- fix #PSBM-47587 (create /var/run/mariadb)
+- Create mariadb runtime directory on mariadb server installation, see #PSBM-47587
 
 * Wed Oct 05 2011 Konstantin Volckov <wolf@sw.ru> 1.0-1
 - created
