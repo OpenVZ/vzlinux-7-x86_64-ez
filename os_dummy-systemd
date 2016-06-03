@@ -86,7 +86,7 @@ done
 %triggerin -- mariadb-server
 # PSBM-47587
 # create /var/run/mariadb
-%{_bindir}/systemd-tmpfiles --create
+%{_bindir}/systemd-tmpfiles --create > /dev/null 2>&1
 :
 
 %files
