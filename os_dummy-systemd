@@ -4,7 +4,7 @@ Group: Applications/System
 Vendor: Parallels
 License: GPL
 Version: 1.0
-Release: 1.1
+Release: 2
 Autoreq: 0
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
