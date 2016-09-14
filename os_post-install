@@ -39,7 +39,7 @@ rm -f etc/systemd/system/default.target > /dev/null 2>&1
 ln -s multi-user.target etc/systemd/system/default.target > /dev/null 2>&1
 
 # turn services on
-list="network httpd iptables sshd xinetd saslauthd sendmail crond"
+list="network httpd sshd xinetd saslauthd sendmail crond"
 for i in $list; do
 	/bin/systemctl enable $i.service > /dev/null 2>&1
 done
