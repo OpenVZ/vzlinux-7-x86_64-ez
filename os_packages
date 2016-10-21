@@ -17,6 +17,7 @@ logrotate
 bind
 finger
 finger-server
+firewalld
 ftp
 httpd
 mailcap

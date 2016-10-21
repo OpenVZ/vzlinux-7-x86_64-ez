@@ -39,7 +39,7 @@ rm -f etc/systemd/system/default.target > /dev/null 2>&1
 ln -s multi-user.target etc/systemd/system/default.target > /dev/null 2>&1
 
 # turn services on
-list="network httpd iptables sshd xinetd saslauthd sendmail crond"
+list="network httpd sshd xinetd saslauthd sendmail crond firewalld"
 for i in $list; do
 	/bin/systemctl enable $i.service > /dev/null 2>&1
 done
@@ -67,6 +67,9 @@ if [ -f $CFG_FILE ]; then
         $CFG_FILE > ${CFG_FILE}.$$ && \
 		move_file ${CFG_FILE}.$$ $CFG_FILE > /dev/null 2>&1
 fi
+
+# Turn apache ports on
+/usr/bin/firewall-offline-cmd --port 80:tcp > /dev/null 2>&1
 
 # apache tuning
 echo "# prefork MPM

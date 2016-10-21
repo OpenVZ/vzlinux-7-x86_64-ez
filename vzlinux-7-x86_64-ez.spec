@@ -147,6 +147,11 @@ done
 %files -f files.lst
 
 %changelog
+* Fri Oct 21 2016 Konstantin Volkov <wolf@virtuozzo.com> 7.0.0-9
+- Enable firewalld by default, open appropriate ports, see #PSBM-54055
+- Set default timezone for host, see #PSBM-54121
+- Corrected docker template according to VZ7 kernel, see #PSBM-50601
+
 * Mon Oct 10 2016 Konstantin Volkov <wolf@virtuozzo.com> 7.0.0-8
 - Turn back iptables service, see #PSBM-53457
 

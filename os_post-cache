@@ -22,7 +22,9 @@ fi
 
 pushd $rootdir > /dev/null
 
-[ -f /etc/localtime ] && cp -fp /etc/localtime etc/localtime
+[ -f etc/localtime ] && rm -f etc/localtime
+ln -s ../usr/share/zoneinfo/Host etc/localtime
+cp -fp /etc/localtime usr/share/zoneinfo/Host
 [ -f /etc/sysconfig/i18n ] && cp -fp /etc/sysconfig/i18n etc/sysconfig/i18n
 
 popd > /dev/null

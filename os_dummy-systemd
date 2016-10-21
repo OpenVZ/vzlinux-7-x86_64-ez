@@ -1,10 +1,10 @@
 Summary: Dummy package to fix systemd initscripts configs
 Name: vzdummy-systemd-el7
 Group: Applications/System
-Vendor: Parallels
+Vendor: Virtuozzo
 License: GPL
 Version: 1.0
-Release: 2
+Release: 3
 Autoreq: 0
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
@@ -81,12 +81,6 @@ ln -s /usr/lib/systemd/system/vzreboot.service \
 for file in "/bin/ping" "/bin/ping6"; do
 	setcap cap_net_raw+ep $file > /dev/null 2>&1
 done
-:
-
-%triggerin -- mariadb-server
-# PSBM-47587
-# create /var/run/mariadb
-%{_bindir}/systemd-tmpfiles --create > /dev/null 2>&1
 :
 
 %files
