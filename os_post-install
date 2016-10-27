@@ -108,4 +108,10 @@ chmod g+s var/log/journal
 
 touch etc/fstab
 
+# Fix docker-firewalld startup
+mkdir -p etc/systemd/system/docker.service.d
+echo "[Unit]
+After=firewalld.service
+" > etc/systemd/system/docker.service.d/firewalld.conf
+
 popd > /dev/null
