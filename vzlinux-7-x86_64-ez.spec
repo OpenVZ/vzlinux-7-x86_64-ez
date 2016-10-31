@@ -52,7 +52,7 @@ Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
 Version: 7.0.0
-Release: 11%{?dist}
+Release: 12%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
 Requires: %package_manager_pkg
@@ -147,6 +147,9 @@ done
 %files -f files.lst
 
 %changelog
+* Mon Oct 31 2016 Konstantin Volkov <wolf@virtuozzo.com> 7.0.0-12
+- Remove docker app template
+
 * Fri Oct 28 2016 Konstantin Volkov <wolf@virtuozzo.com> 7.0.0-11
 - Open tcp port for mod_ssl, see #PSBM-54473
 
