@@ -71,6 +71,11 @@ fi
 # Turn apache ports on
 /usr/bin/firewall-offline-cmd --port 80:tcp > /dev/null 2>&1
 
+CFG_FILE=etc/firewalld/firewalld.conf
+if grep -q '^IndividualCalls=no' $CFG_FILE; then
+    sed -i 's/^IndividualCalls=no/IndividualCalls=yes/' $CFG_FILE
+fi
+
 # apache tuning
 echo "# prefork MPM
 # StartServers: number of server processes to start
