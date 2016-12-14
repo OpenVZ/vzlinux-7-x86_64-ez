@@ -52,7 +52,7 @@ Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
 Version: 7.0.0
-Release: 12%{?dist}
+Release: 13%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
 Requires: %package_manager_pkg
@@ -147,6 +147,9 @@ done
 %files -f files.lst
 
 %changelog
+* Tue Dec 13 2016 Denis Silakov <dsilakov@virtuozzo.com> 7.0.0-13
+- Force firewalld to use individual calls to iptables/ebtables (#PSBM-57264)
+
 * Mon Oct 31 2016 Konstantin Volkov <wolf@virtuozzo.com> 7.0.0-12
 - Remove docker app template
 
