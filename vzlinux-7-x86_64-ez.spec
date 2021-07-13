@@ -51,7 +51,7 @@ Summary: %fullname %fulltemplatearch Template set
 Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
-Version: 7.0.0
+Version: 8.0.0
 Release: 14%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
