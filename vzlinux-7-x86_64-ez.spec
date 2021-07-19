@@ -26,7 +26,7 @@ find %1 -type f -printf '%%%config %%%attr(%m,root,root) %p\\n' | sed "s,%buildr
 %define sources_lst() \
 %((cd %_sourcedir;\
 s=1;\
-for tmpl in %1; do\
+for tmpl in %*; do\
 sources=$tmpl"_*";\
 for file in $sources; do\
 echo Source$s: $file;\
@@ -37,7 +37,7 @@ done))\
 
 # Obsoletes list
 %define obsoletes_lst() \
-%((for tmpl in %1; do\
+%((for tmpl in %*; do\
 [ $tmpl = os ] && continue;\
 echo "Obsoletes: $tmpl-%templatename-%templatever-%templatearch-ez < 7.0.0";\
 echo "Provides: $tmpl-%templatename-%templatever-%templatearch-ez = %version-%release";\
@@ -52,7 +52,7 @@ Name: %templatename-%templatever-%templatearch-ez
 Group: Virtuozzo/Templates
 License: GPL
 Version: 8.0.0
-Release: 14%{?dist}
+Release: 15%{?dist}
 BuildRoot: %_tmppath/%name-root
 BuildArch: noarch
 Requires: %package_manager_pkg
