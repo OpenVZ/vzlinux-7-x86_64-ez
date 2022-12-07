@@ -82,4 +82,6 @@ which
 tar
 xz
 yum
-vzdummy-systemd-el7
+vz-dummy-systemd
+ct-preset-systemd
+vz-preset-common
