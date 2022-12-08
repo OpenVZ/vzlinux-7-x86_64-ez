@@ -84,4 +84,4 @@ xz
 yum
 vz-dummy-systemd
 ct-preset-systemd
-vz-preset-common
+ct-preset-common
